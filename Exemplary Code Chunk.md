@@ -1,12 +1,20 @@
-## Exemplary Code: UAV Gradient Map
+# Exemplary Code: Creating a Gradient Color Scheme to Show UAV Diffusion Over Time
 
-**What this chunk does:**
+## What this chunk does
 
-This code transforms raw COW panel data into a global gradient map showing when each country adopted armed UAVs. It filters for UAV adopters, finds each state's first adoption year, joins that to world map polygons via a custom country mapping table, then renders a choropleth with a blue-to-red gradient (early to recent adopters). The result is a publication-ready map that shows diffusion patterns at a glance — no intermediate files, just one pipeline from CSV to visualization.
+It akes the raw COW Armed UAV adoption and produces a choropleth showing when each country first adopted armed UAVs. The pipeline filters for UAV records, computes each state's first adoption year with `group_by` + `summarise(min(year))`, joins the result onto world map polygons through a manual country-name lookup table. The map thus renders with a sequential blue-to-red color scale from early to recent adopters (see below).
 
-**Why it's worth highlighting:**
+## Why I want to highlight this
 
-The key challenge is joining COW state names (e.g., "United States of America") to map region names (e.g., "USA"). The `country_mapping` table handles this explicitly rather than relying on fuzzy matching. Once joined, `scale_fill_gradientn()` applies a colorblind-friendly diverging palette, and `coord_fixed()` excludes Antarctica while preserving aspect ratio. The whole thing is self-contained and reproducible.
+Reconciling COW state names with the region names in the map data — "United States of America" vs. "USA," "Russia" vs. "Russian Federation," and so on, was difficult. I didn't want to rely on string matching (which silently mismatches), so the `country_mapping` tibble handles every case explicitly, and any unmapped country surfaces as a visible NA on the map instead of a silent error.
+
+Some small details I want to note:
+- `scale_fill_gradientn()` uses an 8-stop ColorBrewer RdBu palette, which is generally colorblind-safe.
+- `coord_fixed(1.3)` locks the aspect ratio; `ylim = c(-55, 83)` crops Antarctica without distorting the rest of the projection.
+- `na.value = "grey20"` keeps non-adopters visually distinct from
+  unmapped data.
+
+ ## Here is the code: 
 
 ```{r}
 
@@ -52,4 +60,5 @@ ggplot(world_uav, aes(x = long, y = lat, group = group)) +
   )… (full ggplot in code)
 
 ```
+## And here is how it turned out:
 ![Gradient output](gradient.PNG)
