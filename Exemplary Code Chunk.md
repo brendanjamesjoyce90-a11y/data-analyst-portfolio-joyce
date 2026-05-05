@@ -2,7 +2,7 @@
 ### *Creating a Gradient Color Scheme to Show UAV Diffusion Over Time*
 _____
 ### What this chunk does
-It takes the raw COW Armed UAV adoption and produces a choropleth showing when each country first adopted armed UAVs. 
+It takes the raw COW Armed UAV adoption and produces a choropleth showing when each country first adopted armed UAVs. It's simple, but the idea can be applied across any dataset with latitude and longitude coordinates.
 The pipeline itself:
 - filters for UAV records
 - computes each state's first adoption year with `group_by` + `summarise(min(year))`
@@ -10,7 +10,9 @@ The pipeline itself:
 - renders it with a sequential blue-to-red color scale from early to recent adopters (see below).
 _____
 ### **Why I want to highlight this**
-Reconciling COW state names with the region names in the map data — "United States of America" vs. "USA," "Russia" vs. "Russian Federation," and so on, was difficult. I didn't want to rely on string matching (which silently mismatches), so the `country_mapping` tibble handles every case explicitly, and any unmapped country surfaces as a visible NA on the map instead of a silent error.
+It's intuitive, and it shows diffusion trends. This is especially important for IR scholars who seek to understand how certain, processes, phenomena, etc spread over time, in an extremely easy to understand visual.
+Even for an audience with little to no data analysis background, this code chunk produces rapidly digestible visuals for comparatively complex information. 
+In addition, reconciling COW state names with the region names in the map data — "United States of America" vs. "USA," "Russia" vs. "Russian Federation," and so on, was difficult. I didn't want to rely on string matching (which silently mismatches), so the `country_mapping` tibble handles every case explicitly, and any unmapped country surfaces as a visible NA on the map instead of a silent error.
 _____
  ### **Here is the code:** 
 ##### First, I extracted UAV adoption years
