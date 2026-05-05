@@ -3,7 +3,7 @@
 
 ## What this chunk does
 
-It akes the raw COW Armed UAV adoption and produces a choropleth showing when each country first adopted armed UAVs. The pipeline filters for UAV records, computes each state's first adoption year with `group_by` + `summarise(min(year))`, joins the result onto world map polygons through a manual country-name lookup table. The map thus renders with a sequential blue-to-red color scale from early to recent adopters (see below).
+It takes the raw COW Armed UAV adoption and produces a choropleth showing when each country first adopted armed UAVs. The pipeline filters for UAV records, computes each state's first adoption year with `group_by` + `summarise(min(year))`, joins the result onto world map polygons through a manual country-name lookup table. The map thus renders with a sequential blue-to-red color scale from early to recent adopters (see below).
 
 ## Why I want to highlight this
 
