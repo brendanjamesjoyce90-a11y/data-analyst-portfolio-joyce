@@ -1,4 +1,4 @@
-## Exemplary Code: UAV Gradient Map {.center .smaller}
+## Exemplary Code: UAV Gradient Map
 
 **What this chunk does:**
 
