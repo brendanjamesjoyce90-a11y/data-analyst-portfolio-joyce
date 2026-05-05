@@ -1,10 +1,8 @@
-# Exemplary Code Chunk
-## *Creating a Gradient Color Scheme to Show UAV Diffusion Over Time*
+# **Exemplary Code Chunk**
+### *Creating a Gradient Color Scheme to Show UAV Diffusion Over Time*
 
 # What this chunk does
-
 It takes the raw COW Armed UAV adoption and produces a choropleth showing when each country first adopted armed UAVs. 
-
 The pipeline itself:
 - filters for UAV records
 - computes each state's first adoption year with `group_by` + `summarise(min(year))`
@@ -17,21 +15,17 @@ The pipeline itself:
 - `na.value = "grey20"` keeps non-adopters visually distinct from
   unmapped data.
 
-# Why I want to highlight this
-
+# **Why I want to highlight this**
 Reconciling COW state names with the region names in the map data — "United States of America" vs. "USA," "Russia" vs. "Russian Federation," and so on, was difficult. I didn't want to rely on string matching (which silently mismatches), so the `country_mapping` tibble handles every case explicitly, and any unmapped country surfaces as a visible NA on the map instead of a silent error.
 
- # Here is the code: 
+ # **Here is the code:** 
 ### First, I extracted UAV adoption years
 ```{r}
-
 uav_adoption <- cow_long |>
   filter(techtype == "Armed UAVs", !is.na(use), use %in% c(1, 9)) |>
   group_by(statename) |>
   summarise(adoption_year = min(year), .groups = "drop")
 ```
-
-
 ### Then I maped COW state names to map region names
 ```{r}
 country_mapping <- tribble(
@@ -43,8 +37,6 @@ country_mapping <- tribble(
   # ... (full mapping table in actual code)
 )
 ```
-
-
 ### Next I joined the adoption data to the world map
 ```{r}
 uav_map_data <- uav_adoption_all |>
@@ -54,7 +46,6 @@ uav_map_data <- uav_adoption_all |>
 world_uav <- world_map |>
   left_join(uav_map_data, by = "region")
 ```
-
 ### Finally, I rendered the gradient map 
 ```{r}
 ggplot(world_uav, aes(x = long, y = lat, group = group)) +
