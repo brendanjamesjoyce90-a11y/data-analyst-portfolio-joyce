@@ -9,12 +9,6 @@ The pipeline itself:
 - joins the result onto world map polygons through a manual country-name lookup table.
 - renders it with a sequential blue-to-red color scale from early to recent adopters (see below).
 _____
-#### *Some small details I want to note:*
-- `scale_fill_gradientn()` uses an 8-stop ColorBrewer RdBu palette, which is generally colorblind-safe.
-- `coord_fixed(1.3)` locks the aspect ratio; `ylim = c(-55, 83)` crops Antarctica without distorting the rest of the projection.
-- `na.value = "grey20"` keeps non-adopters visually distinct from
-  unmapped data.
-_____
 ### **Why I want to highlight this**
 Reconciling COW state names with the region names in the map data — "United States of America" vs. "USA," "Russia" vs. "Russian Federation," and so on, was difficult. I didn't want to rely on string matching (which silently mismatches), so the `country_mapping` tibble handles every case explicitly, and any unmapped country surfaces as a visible NA on the map instead of a silent error.
 _____
@@ -26,7 +20,7 @@ uav_adoption <- cow_long |>
   group_by(statename) |>
   summarise(adoption_year = min(year), .groups = "drop")
 ```
-##### Then I maped COW state names to map region names
+##### Then, I mapped COW state names to map region names
 ```{r}
 country_mapping <- tribble(
   ~statename, ~region,
