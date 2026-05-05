@@ -1,3 +1,10 @@
+# This repository contains:
+- My Data Analyst Resume
+- My Data Analyst Final Portfolio Quarto Code
+- The Final Product of the Code
+- An Exemplary Code Chunk
+- Both Data sets from Janes and Correlates of War 
+
 # My Research Topics
 My portfolio examines two questions about international security and military technology diffusion. 
 First, how did the international community respond leading up to and after Russia's invasion of Ukraine on February 24, 2022, and which states drove that response? 
