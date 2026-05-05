@@ -1,4 +1,5 @@
-# Exemplary Code: Creating a Gradient Color Scheme to Show UAV Diffusion Over Time
+# Exemplary Code Chunk
+*Creating a Gradient Color Scheme to Show UAV Diffusion Over Time*
 
 ## What this chunk does
 
