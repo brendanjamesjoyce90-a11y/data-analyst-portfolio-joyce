@@ -3,7 +3,7 @@
 - My Data Analyst Final Portfolio Quarto Code
 - The Final Product Output of the Code (6 slides total, click *"more pages"* to see final slide in **Final Product** PDF)
 - An Exemplary Code Chunk (as a markdown file)
-- Both Data sets from Janes and Correlates of War 
+- Both Data sets from Janes and Correlates of War (as zip files) 
 
 # My Research Topics
 My portfolio examines two questions about international security and military technology diffusion.
