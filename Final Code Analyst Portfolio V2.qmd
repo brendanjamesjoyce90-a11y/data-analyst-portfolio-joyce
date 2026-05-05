@@ -1,0 +1,877 @@
+---
+title: "Data Analyst Portfolio"
+subtitle: "American University SIS 750 | Spring 2026"
+author: "Brendan Joyce"
+date: "2026-05-06"
+format:
+  revealjs:
+    theme: night
+    slide-number: h.v
+    transition: fade
+    transition-speed: fast
+    background-transition: zoom
+    embed-resources: true
+    center: true
+    margin: 0.05
+    width: 1400
+    height: 800
+    auto-animate: true
+    auto-animate-easing: ease-in-out
+    auto-animate-duration: 600
+    controls: true
+    progress: true
+    hash: true
+    keyboard: true
+    highlight-theme: dracula
+    pdf-separate-fragments: true
+    plugins:
+      - search
+      - zoom
+      - notes
+      - mathjax
+execute:
+  echo: false
+  warning: false
+  message: false
+  fig.align: center
+---
+
+```{r}
+
+library(tidyverse)   
+library(knitr)       
+library(scales) 
+library(ggtext)
+library(ggplot2)
+library(maps)
+library(devtools)
+library(tidyr)
+library(dplyr)
+library(lubridate)
+library(scales)
+library(patchwork)
+library(stringr)
+library(viridisLite)
+
+
+```
+
+## PS2: Who Responded to the Invasion? {.center .smaller}
+
+Great powers and regional actors drove the response — reflecting renewed geopolitical competition
+
+```{r}
+c_intl_response_to_ukraine_crisis <- read_csv("intl_response_to_ukraine_war.csv")
+
+
+nato_dates_split <- c_intl_response_to_ukraine_crisis %>%
+  mutate(
+    date = as.Date(mdy_hms(`Start Date`)),
+    nato_status = if_else(
+      `Event Country` %in% c(
+        "Belgium","Bulgaria","Canada","Czech Republic","Estonia","France","Germany",
+        "Greece","Italy","Lithuania","Netherlands","Norway","Poland","Portugal",
+        "Romania","Slovakia","Spain","Turkey","United Kingdom","United States"
+      ),
+      "NATO", "Non-NATO"
+    ),
+    cutoff = case_when(
+      date >= as.Date("2022-02-24") ~ "post invasion",
+      date <  as.Date("2022-02-24") ~ "pre invasion"
+    )
+  )
+
+pre_invasion_counts <- nato_dates_split %>%
+  filter(cutoff == "pre invasion") %>%
+  count(`Event Country`, name = "pre_invasion_total_responses")
+
+post_invasion_counts <- nato_dates_split %>%
+  filter(cutoff == "post invasion") %>%
+  count(`Event Country`, name = "post_invasion_total_responses")
+
+country_response_counts <- pre_invasion_counts %>%
+  full_join(post_invasion_counts, by = "Event Country") %>%
+  replace_na(list(
+    pre_invasion_total_responses = 0,
+    post_invasion_total_responses = 0
+  ))
+
+country_proportions_pct <- country_response_counts %>%
+  mutate(
+    total_pre  = sum(pre_invasion_total_responses),
+    total_post = sum(post_invasion_total_responses),
+    pre_pct   = 100 * pre_invasion_total_responses / total_pre,
+    post_pct  = 100 * post_invasion_total_responses / total_post,
+    pct_change = post_pct - pre_pct
+  ) %>%
+  select(`Event Country`, pre_pct, post_pct, pct_change)
+
+descending_pcts_post <- country_proportions_pct %>% 
+   arrange(desc(post_pct)) %>% 
+  select(`Event Country`, post_pct, pct_change)
+
+descending_pcts_pre <-  country_proportions_pct %>% 
+  arrange(desc(pre_pct)) %>% 
+  select(`Event Country`, pre_pct, pct_change)
+
+
+responses_before_after_invasion_plot <- country_response_counts %>%
+  pivot_longer(
+     cols = c(pre_invasion_total_responses, post_invasion_total_responses),
+    names_to = "period",
+    values_to = "count"
+  )
+
+# Nato versus Non-Nato
+nato_countries <- c("Belgium","Bulgaria","Canada","Czech Republic","Estonia","France","Germany",
+                    "Greece","Italy","Lithuania","Netherlands","Norway","Poland","Portugal",
+                    "Romania","Slovakia","Spain","Turkey","United Kingdom","United States")
+
+
+top_nato_countries <- c("United States", "United Kingdom", "Germany")
+
+
+top_non_nato_countries <- c("Ukraine", "Russian Federation", "India")
+
+
+top_countries_list <- c(top_nato_countries, top_non_nato_countries)
+
+#  Total responses by week 
+all_timeline_data <- c_intl_response_to_ukraine_crisis %>%
+  mutate(
+    date = as.Date(mdy_hms(`Start Date`)),
+    week = floor_date(date, "week"),
+    nato_status = if_else(`Event Country` %in% nato_countries, "NATO", "Non-NATO")
+  ) %>%
+  count(`Event Country`, week, nato_status) %>%
+  arrange(`Event Country`, week) %>%
+  group_by(`Event Country`) %>%
+  mutate(cumulative = cumsum(n)) %>%
+  ungroup()
+
+# Average cumulative responses across  NATO 
+nato_avg_timeline <- all_timeline_data %>%
+  filter(nato_status == "NATO") %>%
+  group_by(week) %>%
+  summarise(avg_cumulative = mean(cumulative), .groups = "drop")
+
+# Average cumulative responses across Non-NATO countries
+non_nato_avg_timeline <- all_timeline_data %>%
+  filter(nato_status == "Non-NATO") %>%
+  group_by(week) %>%
+  summarise(avg_cumulative = mean(cumulative), .groups = "drop")
+
+# Total responses by week for top 3 countries 
+timeline_data <- c_intl_response_to_ukraine_crisis %>%
+  filter(`Event Country` %in% top_countries_list) %>%
+  mutate(
+    date = as.Date(mdy_hms(`Start Date`)),
+    week = floor_date(date, "week")
+  ) %>%
+  count(`Event Country`, week) %>%
+   arrange(`Event Country`, week) %>%
+  group_by(`Event Country`) %>%
+    mutate(cumulative = cumsum(n)) %>%
+  ungroup() %>%
+  mutate(nato_status = if_else(`Event Country` %in% nato_countries, "NATO", "Non-NATO"))
+
+date_range <- c_intl_response_to_ukraine_crisis %>%
+  mutate(date = as.Date(mdy_hms(`Start Date`))) %>%
+  summarise(min_date = min(date, na.rm = TRUE), max_date = max(date, na.rm = TRUE))
+
+y_max <- max(timeline_data$cumulative)
+
+
+timeline_nato <- timeline_data %>% filter(nato_status == "NATO")
+
+timeline_non_nato <- timeline_data %>% filter(nato_status == "Non-NATO")
+
+#  NATO plot 
+nato_plot <- ggplot(timeline_nato, aes(x = week, y = cumulative, color = `Event Country`, shape = `Event Country`)) +
+  geom_line(data = nato_avg_timeline, aes(x = week, y = avg_cumulative), 
+            color = "#757575", linewidth = 1.2, linetype = "dotted", alpha = 0.6, inherit.aes = FALSE) +
+  annotate("text", x = max(nato_avg_timeline$week), y = max(nato_avg_timeline$avg_cumulative) * 1.05,
+           label = "NATO Avg", color = "#757575", size = 2.5, hjust = 1, fontface = "italic", family = "sans") +
+  geom_vline(xintercept = as.Date("2022-02-24"), linetype = "dotted", color = "#d32f2f", linewidth = 0.8, alpha = 0.7) +
+  annotate("text", x = as.Date("2022-02-24"), y = y_max * 0.95, 
+           label = "INVASION", color = "#d32f2f", fontface = "bold", size = 3, hjust = -0.1, family = "sans") +
+  geom_line(linewidth = 1.3, alpha = 0.95) +
+  geom_point(size = 2.2, alpha = 0.9, stroke = 0.5) +
+  scale_color_manual(
+    values = c(
+      "United States" = "#1565c0",
+      "United Kingdom" = "#e65100", 
+      "Germany" = "#6a1b9a"
+    )
+  ) +
+  scale_x_date(
+    limits = c(date_range$min_date - 2, date_range$max_date + 2),
+    date_breaks = "2 weeks",
+    date_labels = "%d %b",
+    expand = expansion(mult = c(0.02, 0.02))
+  ) +
+  scale_y_continuous(
+    limits = c(0, y_max),
+    expand = expansion(mult = c(0, 0.05)),
+    breaks = seq(0, 200, by = 20)
+  ) +
+  labs(
+    title = "NATO MEMBER RESPONSES",
+    x = NULL,
+    y = "Cumulative Responses"
+  ) +
+  theme_minimal(base_size = 11, base_family = "sans") +
+  theme(
+    plot.title = element_text(face = "bold", size = 11, hjust = 0.5, margin = margin(b = 8), 
+                              color = "#212121", family = "sans"),
+    axis.text.x = element_text(size = 8.5, color = "#424242", angle = 0, hjust = 0.5, family = "sans"),
+    axis.text.y = element_text(size = 8.5, color = "#424242", family = "sans"),
+    axis.title.y = element_text(size = 9.5, face = "bold", color = "#212121", family = "sans"),
+    legend.position = "bottom",
+    legend.text = element_text(size = 8.5, family = "sans"),
+    legend.title = element_blank(),
+     legend.key.height = unit(0.4, "cm"),
+     legend.key.width = unit(0.8, "cm"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "#e0e0e0", linewidth = 0.25),
+    panel.border = element_rect(color = "#bdbdbd", fill = NA, linewidth = 0.5),
+    plot.background = element_rect(fill = "#fafafa", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.margin = margin(10, 5, 10, 10)
+  ) +
+  guides(color = guide_legend(nrow = 1, override.aes = list(size = 3)))
+
+# Non-NATO visual
+non_nato_plot <- ggplot(timeline_non_nato, aes(x = week, y = cumulative, color = `Event Country`, shape = `Event Country`)) +
+  geom_line(data = non_nato_avg_timeline, aes(x = week, y = avg_cumulative), 
+            color = "#757575", linewidth = 1.2, linetype = "dotted", alpha = 0.6, inherit.aes = FALSE) +
+  annotate("text", x = max(non_nato_avg_timeline$week), y = max(non_nato_avg_timeline$avg_cumulative) * 1.05,
+           label = "Non-NATO Avg", color = "#757575", size = 2.5, hjust = 1, fontface = "italic", family = "sans") +
+  geom_vline(xintercept = as.Date("2022-02-24"), linetype = "dotted", color = "#d32f2f", linewidth = 0.8, alpha = 0.7) +
+  annotate("text", x = as.Date("2022-02-24"), y = y_max * 0.95, 
+           label = "INVASION", color = "#d32f2f", fontface = "bold", size = 3, hjust = -0.1, family = "sans") +
+  geom_line(linewidth = 1.3, alpha = 0.95) +
+  geom_point(size = 2.2, alpha = 0.9, stroke = 0.5) +
+  scale_color_manual(
+    values = c(
+      "Ukraine" = "#c62828",
+      "Russian Federation" = "#283593",
+      "India" = "#00695c"
+    )
+  ) +
+  scale_x_date(
+    limits = c(date_range$min_date - 2, date_range$max_date + 2),
+    date_breaks = "2 weeks",
+    date_labels = "%d %b",
+    expand = expansion(mult = c(0.02, 0.02))
+  ) +
+  scale_y_continuous(
+    limits = c(0, y_max),
+    expand = expansion(mult = c(0, 0.05)),
+    breaks = seq(0, 200, by = 20)
+  ) +
+  labs(
+    title = "NON-NATO COUNTRY RESPONSES",
+    x = NULL,
+    y = NULL
+  ) +
+  theme_minimal(base_size = 11, base_family = "sans") +
+  theme(
+    plot.title = element_text(face = "bold", size = 11, hjust = 0.5, margin = margin(b = 8), 
+                              color = "#212121", family = "sans"),
+    axis.text.x = element_text(size = 8.5, color = "#424242", angle = 0, hjust = 0.5, family = "sans"),
+    axis.text.y = element_text(size = 8.5, color = "#424242", family = "sans"),
+    legend.position = "bottom",
+    legend.text = element_text(size = 8.5, family = "sans"),
+    legend.title = element_blank(),
+    legend.key.height = unit(0.4, "cm"),
+    legend.key.width = unit(0.8, "cm"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "#e0e0e0", linewidth = 0.25),
+    panel.border = element_rect(color = "#bdbdbd", fill = NA, linewidth = 0.5),
+    plot.background = element_rect(fill = "#fafafa", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.margin = margin(10, 10, 10, 5)
+  ) +
+  guides(color = guide_legend(nrow = 1, override.aes = list(size = 3)))
+
+pre_post_invasion_plot <- nato_plot | non_nato_plot
+
+# Combined plots 
+pre_post_invasion_plot <- pre_post_invasion_plot +
+  plot_annotation(
+    title = NULL,
+    caption = "Source: Janes Intelligence Review (Feb-Apr 2022). Countries selected to show major responders across alliance structures.",
+    theme = theme(
+      plot.caption = element_text(size = 8.5, color = "#424242", hjust = 0.5, margin = margin(t = 5), family = "sans", lineheight = 1.3)
+    )
+  )
+
+
+nato <- c_intl_response_to_ukraine_crisis %>%
+  mutate(
+    date = as.Date(mdy_hms(`Start Date`)),
+    nato_status = if_else(
+      `Event Country` %in% c(
+        "Belgium","Bulgaria","Canada","Czech Republic","Estonia","France","Germany",
+        "Greece","Italy","Lithuania","Netherlands","Norway","Poland","Portugal",
+        "Romania","Slovakia","Spain","Turkey","United Kingdom","United States"
+      ),
+      "NATO", "Non-NATO")
+    )
+
+events_by_day <- nato %>%
+  group_by(date, `Event Type V2`) %>%
+  summarise(count = n(), .groups = "drop")
+
+events_by_day_graph <- 
+  ggplot(
+    events_by_day, aes(x = date, y = count,
+                       color = `Event Type V2`,
+                       fill  = `Event Type V2`)
+  ) +
+  geom_area(alpha = 0.2, position = "identity") +
+  geom_line(linewidth = 0.9) +
+  labs(
+    x     = NULL,
+    y     = "Number of Events",
+    color = "Action Type",
+    fill  = "Action Type"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position  = "bottom",
+    legend.text      = element_text(size = 8),
+    panel.grid.minor = element_blank(),
+    axis.text.x      = element_text(angle = 30, hjust = 1, size = 7)
+  )
+
+
+border_theme <- theme(
+  plot.background = element_rect(fill = "white", colour = "black", linewidth = 0.8)
+)
+
+
+world_responses <- pre_post_invasion_plot
+
+world_responses
+
+```
+
+## Global Response Intensity {.center .smaller}
+
+Map Indicates that responses to Ukraine were mostly between Great Powers
+```{r}
+#| label: ps2-response-intensity-map
+
+library(maps)
+library(viridisLite)
+
+# Response counts by country and type
+response_by_country_type <- c_intl_response_to_ukraine_crisis %>%
+  count(`Event Country`, `Event Type V2`) %>%
+  pivot_wider(names_from = `Event Type V2`, values_from = n, values_fill = 0) %>%
+  mutate(
+    total_responses = Statement + Operation + Action + Judicial + Attack,
+    primary_intensity = Statement + Action,
+    secondary_intensity = Operation + Attack + Judicial,
+    response_strategy = case_when(
+      (Operation + Attack) > (Statement + Action) ~ "Kinetic",
+      Statement > Action ~ "Diplomatic",
+      TRUE ~ "Mixed"
+    )
+  )
+
+world_map <- map_data("world")
+
+# I covered all countries in case future analysts want to delve into other regions of interest
+country_mapping <- tribble(
+  ~`Event Country`, ~region,
+  "United States", "USA",
+  "United Kingdom", "UK",
+   "Russian Federation", "Russia",
+  "Germany", "Germany",
+  "France", "France",
+  "Italy", "Italy",
+  "Spain", "Spain",
+  "Poland", "Poland",
+  "Ukraine", "Ukraine",
+  "Turkey", "Turkey",
+  "Canada", "Canada",
+  "Netherlands", "Netherlands",
+  "Belgium", "Belgium",
+  "Greece", "Greece",
+  "Portugal", "Portugal",
+  "Romania", "Romania",
+  "Bulgaria", "Bulgaria",
+  "Czech Republic", "Czech Republic",
+  "Hungary", "Hungary",
+  "Slovakia", "Slovakia",
+  "Lithuania", "Lithuania",
+  "Latvia", "Latvia",
+  "Estonia", "Estonia",
+  "Norway", "Norway",
+  "Sweden", "Sweden",
+  "Finland", "Finland",
+  "Denmark", "Denmark",
+  "Austria", "Austria",
+  "Switzerland", "Switzerland",
+  "Ireland", "Ireland",
+  "Croatia", "Croatia",
+  "Slovenia", "Slovenia",
+  "Serbia", "Serbia",
+  "Albania", "Albania",
+  "North Macedonia", "North Macedonia",
+  "Bosnia and Herzegovina", "Bosnia and Herzegovina",
+  "Montenegro", "Montenegro",
+  "Moldova", "Moldova",
+  "Georgia", "Georgia",
+  "Armenia", "Armenia",
+  "Azerbaijan", "Azerbaijan",
+  "Japan", "Japan",
+  "South Korea", "South Korea",
+  "Australia", "Australia",
+  "New Zealand", "New Zealand",
+  "China", "China",
+  "India", "India",
+  "Singapore", "Singapore",
+  "Taiwan", "Taiwan",
+  "Israel", "Israel",
+  "Saudi Arabia", "Saudi Arabia",
+  "United Arab Emirates", "UAE",
+  "Qatar", "Qatar",
+   "Iran", "Iran",
+  "Egypt", "Egypt",
+  "South Africa", "South Africa",
+  "Brazil", "Brazil",
+  "Argentina", "Argentina",
+  "Chile", "Chile",
+  "Mexico", "Mexico",
+  "Colombia", "Colombia"
+)
+
+
+response_map_data <- response_by_country_type %>%
+  left_join(country_mapping, by = "Event Country") %>%
+  filter(!is.na(region))
+
+world_response <- world_map %>%
+  left_join(response_map_data, by = "region")
+
+# gradient map (legend is logged)
+ggplot(world_response, aes(x = long, y = lat, group = group)) +
+  geom_polygon(aes(fill = total_responses), color = "grey30", linewidth = 0.1) +
+  geom_polygon(data = world_response %>% filter(response_strategy == "Kinetic"),
+               aes(x = long, y = lat, group = group),
+               fill = NA, color = "#ef4444", linewidth = 1.2) +
+  scale_fill_gradientn(
+    colors = c("#ffffff", "#fee5d9", "#fcbba1", "#fc9272", "#fb6a4a", "#ef3b2c", "#cb181d", "#99000d"),
+    na.value = "grey20",
+    name = "Total Responses",
+    breaks = c(1, 10, 25, 50, 100, 150),
+    trans = "log1p",
+    labels = c("1", "10", "25", "50", "100", "150+")
+  ) +
+  coord_fixed(1.3, ylim = c(-55, 75), expand = FALSE) +
+  labs(
+    title = "Other Non-NATO Responses Indicate Clear Global Concern-India, Argentina, Japan",
+    caption = "Source: Janes Intelligence Review (Feb-Dec 2022). Note: Russia, Ukraine, Georgia, UK employed Operations/Attacks, but less so than actions & statements"
+  ) +
+  theme_void(base_size = 12) +
+  theme(
+    plot.background = element_rect(fill = "grey10", color = NA),
+    panel.background = element_rect(fill = "grey10", color = NA),
+     plot.title = element_text(color = "white", face = "bold", size = 13, hjust = 0.5, margin = margin(b = 5, t = 5)),
+    plot.subtitle = element_text(color = "grey80", size = 10, hjust = 0.5, margin = margin(b = 10)),
+    plot.caption = element_text(color = "grey70", size = 8, hjust = 0.5, margin = margin(t = 8, b = 5)),
+    legend.position = "bottom",
+    legend.title = element_text(color = "white", size = 10, face = "bold"),
+    legend.text = element_text(color = "white", size = 9),
+    legend.background = element_rect(fill = "grey10", color = NA),
+     legend.key.width = unit(2.5, "cm"),
+     legend.key.height = unit(0.4, "cm"),
+     plot.margin = margin(5, 5, 5, 5)
+  )
+```
+
+---
+
+## Response Type by Country {.center .smaller}
+
+States employed different response strategies 
+
+```{r}
+#| label: ps2-stacked-bar-chart
+#| fig-width: 12
+#| fig-height: 6
+
+# Top responding countries and types of responses
+top_countries <- country_response_counts %>%
+  mutate(total = pre_invasion_total_responses + post_invasion_total_responses) %>%
+  slice_max(order_by = total, n = 12) %>%
+  pull(`Event Country`)
+
+event_type_breakdown <- c_intl_response_to_ukraine_crisis %>%
+  filter(`Event Country` %in% top_countries) %>%
+  count(`Event Country`, `Event Type V2`) %>%
+  group_by(`Event Country`) %>%
+  mutate(
+    total = sum(n),
+    proportion = n / total,
+    pct_label = if_else(proportion >= 0.08, paste0(round(proportion * 100), "%"), "")
+  ) %>%
+  ungroup() %>%
+  mutate(
+    `Event Country` = fct_reorder(`Event Country`, total),
+    `Event Type V2` = factor(`Event Type V2`, levels = c("Statement", "Operation", "Judicial", "Attack", "Action"))
+  )
+
+# Horizontal Bar Chart
+ggplot(event_type_breakdown, aes(x = `Event Country`, y = n, fill = `Event Type V2`)) +
+  annotate("rect", xmin = 0.5, xmax = which(levels(event_type_breakdown$`Event Country`) == "United States") + 0.5,
+           ymin = 0, ymax = Inf, fill = "#e3f2fd", alpha = 0.2) +
+  geom_col(width = 0.8, color = "white", linewidth = 0.4) +
+  geom_text(aes(label = pct_label), 
+            position = position_stack(vjust = 0.5),
+            size = 3, fontface = "bold", color = "white") +
+  scale_fill_manual(
+    values = c(
+      "Statement" = "#2563eb",    
+      "Operation" = "#ea580c",    
+      "Action" = "#059669",       
+      "Judicial" = "#7c3aed",     
+      "Attack" = "#dc2626"        
+    ),
+    name = "Response Type"
+  ) +
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0.05)),
+    breaks = seq(0, 200, by = 25)
+  ) +
+  labs(
+    title = "Most States Undertook a Restrained & Diplomatic Approach in Response",
+    x = NULL,
+    y = "Total Number of Recorded Responses",
+    caption = "Source: Janes Intelligence Review (Feb 2022 - Dec 2022). Top 12 responding countries shown. Percentages displayed for response types ≥8%."
+  ) +
+  coord_flip() +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14, hjust = 0, margin = margin(b = 5)),
+    plot.subtitle = element_text(size = 11, hjust = 0, color = "grey30", margin = margin(b = 15)),
+    legend.position = "bottom",
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 11, face = "bold"),
+    legend.box.background = element_rect(color = "grey80", linewidth = 0.5),
+    legend.margin = margin(t = 10),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "grey85", linewidth = 0.4),
+    plot.caption = element_text(size = 8, color = "black", hjust = 0, margin = margin(t = 10)),
+    axis.text.y = element_text(size = 11, face = "bold", color = "grey20"),
+     axis.text.x = element_text(size = 10, color = "grey30"),
+     axis.title.x = element_text(size = 11, face = "bold", margin = margin(t = 10)),
+     plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.margin = margin(10, 10, 10, 10)
+  )
+
+```
+
+---
+
+## PS4: Diffusion of Armed UAV Adoption {.center .smaller}
+
+Early adopters in the U.S., Israel, U.K., Iran, and China 
+
+```{r}
+#| label: ps4-uav-map
+
+library(tidyverse)
+library(maps)
+library(viridisLite)
+
+cow_long <-  read_csv('cow_long.csv')
+
+uav_adoption_all <- cow_long |>
+  filter(techtype == "Armed UAVs", !is.na(use), use %in% c(1, 9)) |>
+  group_by(statename) |>
+  summarise(adoption_year = min(year), .groups = "drop")
+
+world_map <- map_data("world")
+
+country_mapping <- tribble(
+  ~statename, ~region,
+  "United States of America", "USA",
+  "United Kingdom", "UK",
+  "Russia", "Russia",
+  "China", "China",
+  "Turkey", "Turkey",
+  "Iran", "Iran",
+  "Israel", "Israel",
+  "Pakistan", "Pakistan",
+  "United Arab Emirates", "UAE",
+  "Saudi Arabia", "Saudi Arabia",
+  "Nigeria", "Nigeria",
+  "France", "France",
+  "Germany", "Germany",
+  "Italy", "Italy",
+  "Spain", "Spain",
+  "India", "India",
+  "South Korea", "South Korea",
+  "Japan", "Japan",
+  "Australia", "Australia",
+  "Canada", "Canada",
+  "Brazil", "Brazil",
+  "South Africa", "South Africa",
+  "Egypt", "Egypt",
+  "Morocco", "Morocco",
+  "Algeria", "Algeria",
+  "Tunisia", "Tunisia",
+  "Jordan", "Jordan",
+  "Iraq", "Iraq",
+  "Azerbaijan", "Azerbaijan",
+  "Kazakhstan", "Kazakhstan",
+  "Uzbekistan", "Uzbekistan",
+  "Indonesia", "Indonesia",
+  "Malaysia", "Malaysia",
+  "Singapore", "Singapore",
+  "Thailand", "Thailand",
+  "Vietnam", "Vietnam",
+  "Poland", "Poland",
+  "Ukraine", "Ukraine",
+  "Greece", "Greece",
+  "Netherlands", "Netherlands",
+  "Belgium", "Belgium",
+  "Sweden", "Sweden",
+  "Norway", "Norway",
+  "Denmark", "Denmark",
+  "Finland", "Finland",
+  "Austria", "Austria",
+  "Switzerland", "Switzerland",
+  "Portugal", "Portugal",
+  "Czech Republic", "Czech Republic",
+  "Hungary", "Hungary",
+  "Romania", "Romania",
+  "Bulgaria", "Bulgaria",
+  "Serbia", "Serbia",
+  "Croatia", "Croatia",
+  "Slovenia", "Slovenia",
+  "Slovakia", "Slovakia",
+  "Lithuania", "Lithuania",
+  "Latvia", "Latvia",
+  "Estonia", "Estonia",
+  "Ethiopia", "Ethiopia",
+  "Kenya", "Kenya",
+  "Libya", "Libya",
+  "Myanmar", "Myanmar",
+  "Philippines", "Philippines",
+  "Taiwan", "Taiwan",
+  "Venezuela", "Venezuela",
+  "Argentina", "Argentina",
+  "Chile", "Chile",
+  "Colombia", "Colombia",
+  "Peru", "Peru",
+  "Mexico", "Mexico",
+  "South Sudan", "South Sudan",
+  "Sudan", "Sudan",
+   "Syria", "Syria",
+   "Yemen", "Yemen",
+  "Afghanistan", "Afghanistan",
+  "Bangladesh", "Bangladesh",
+  "Nepal", "Nepal",
+  "Sri Lanka", "Sri Lanka",
+  "Armenia", "Armenia",
+  "Georgia", "Georgia",
+  "Belarus", "Belarus",
+  "Moldova", "Moldova",
+  "Albania", "Albania",
+   "Bosnia and Herzegovina", "Bosnia and Herzegovina",
+   "North Macedonia", "North Macedonia",
+   "Montenegro", "Montenegro",
+  "Cyprus", "Cyprus",
+  "Lebanon", "Lebanon",
+  "Kuwait", "Kuwait",
+  "Bahrain", "Bahrain",
+  "Qatar", "Qatar",
+  "Oman", "Oman",
+  "Burkina Faso", "Burkina Faso",
+  "Chad", "Chad",
+  "Democratic Republic of the Congo", "Democratic Republic of the Congo",
+  "Djibouti", "Djibouti",
+   "Kyrgyzstan", "Kyrgyzstan",
+  "Tajikistan", "Tajikistan",
+  "Turkmenistan", "Turkmenistan",
+  "Mali", "Mali",
+  "Niger", "Niger",
+  "Somalia", "Somalia",
+  "Uganda", "Uganda",
+  "Zimbabwe", "Zimbabwe"
+)
+
+uav_map_data <- uav_adoption_all |>
+  left_join(country_mapping, by = "statename") |>
+  filter(!is.na(region))
+
+world_uav <- world_map |>
+  left_join(uav_map_data, by = "region")
+
+# A Gradient Map of UAV Diffusion
+ggplot(world_uav, aes(x = long, y = lat, group = group)) +
+  geom_polygon(aes(fill = adoption_year), color = "grey30", linewidth = 0.1) +
+  scale_fill_gradientn(
+    colors = c("#2166ac", "#4393c3", "#92c5de", "#d1e5f0", "#fddbc7", "#f4a582", "#d6604d", "#b2182b"),
+    na.value = "grey20",
+    name = "Adoption Year",
+    breaks = seq(1990, 2023, by = 5),
+    labels = seq(1990, 2023, by = 5),
+    limits = c(1990, 2023)
+  ) +
+  coord_fixed(1.3, ylim = c(-55, 83), expand = FALSE) +
+  labs(
+    title = "UAV Diffusion Eminates from the Middle East (Iran) and Asia (China)",
+    caption = "Source: COW Arms Technology Dataset v1.0 (2025). Blue = early adopters, Red = recent adopters."
+  ) +
+  theme_void(base_size = 13) +
+  theme(
+     plot.background = element_rect(fill = "grey10", color = NA),
+     panel.background = element_rect(fill = "grey10", color = NA),
+    plot.title = element_text(color = "white", face = "bold", size = 13, hjust = 0.5, margin = margin(b = 10, t = 5)),
+    plot.caption = element_text(color = "grey70", size = 7.5, hjust = 0.5, margin = margin(t = 8, b = 5)),
+    legend.position = "bottom",
+    legend.title = element_text(color = "white", size = 10),
+    legend.text = element_text(color = "white", size = 9),
+    legend.background = element_rect(fill = "grey10", color = NA),
+    legend.key.width = unit(2, "cm"),
+    plot.margin = margin(2, 2, 2, 2)
+  )
+```
+
+---
+
+## Adoption of UAVs vs. Legacy Platforms {.center .smaller}
+
+Armed UAV adoption is spreading faster than any other advanced military technology 
+
+```{r}
+#| label: ps4-multi-tech-adoption-rates
+
+
+# This code here focuses on armed UAVs, 5th Gen Fighters, 2nd Gen Combat Helicopters, 3rd Gen tanks
+
+tech_adoption_multi <- cow_long |>
+  filter(
+    (techtype == "Armed UAVs") |
+    (techtype == "Fighter aircraft" & techname == "Fifth gen. jet fighter") |
+    (techtype == "Attack helicopters" & techname == "Second gen. helicopter") |
+    (techtype == "Tanks" & techname == "Third gen. MBT"),
+    !is.na(use),
+    use == 1
+  ) |>
+  mutate(
+    tech_label = case_when(
+      techtype == "Armed UAVs" ~ "Armed UAVs",
+      techname == "Fifth gen. jet fighter" ~ "5th Gen Fighters",
+      techname == "Second gen. helicopter" ~ "2nd Gen Combat Helicopters",
+      techname == "Third gen. MBT" ~ "3rd Gen Main Battle Tanks",
+      TRUE ~ techname
+    )
+  ) |>
+  group_by(tech_label, statename) |>
+  summarise(adoption_year = min(year), .groups = "drop") |>
+  group_by(tech_label, adoption_year) |>
+  summarise(n = n(), .groups = "drop") |>
+  arrange(tech_label, adoption_year) |>
+  group_by(tech_label) |>
+  mutate(cumulative_adopters = cumsum(n)) |>
+  ungroup()
+
+
+ggplot(tech_adoption_multi, aes(x = adoption_year, y = cumulative_adopters, 
+                                 color = tech_label, fill = tech_label, shape = tech_label)) +
+  annotate("rect", xmin = 2001, xmax = 2003, ymin = 0, ymax = Inf, 
+           fill = "#fee5d9", alpha = 0.3) +
+   annotate("rect", xmin = 2014, xmax = 2016, ymin = 0, ymax = Inf, 
+           fill = "#fcbba1", alpha = 0.3) +
+  annotate("rect", xmin = 2020, xmax = 2022, ymin = 0, ymax = Inf, 
+           fill = "#fc9272", alpha = 0.3) +
+  geom_area(alpha = 0.25, position = "identity", linewidth = 0) +
+  geom_line(linewidth = 1.2, alpha = 0.9) +
+  geom_point(data = tech_adoption_multi %>% filter(adoption_year %% 1 == 0),
+             size = 2.5, alpha = 0.95, stroke = 0.8) +
+   geom_vline(xintercept = 2001, linetype = "dotted", color = "#cb181d", linewidth = 0.8, alpha = 0.7) +
+  geom_vline(xintercept = 2014, linetype = "dotted", color = "#cb181d", linewidth = 0.8, alpha = 0.7) +
+  geom_vline(xintercept = 2020, linetype = "dotted", color = "#cb181d", linewidth = 0.8, alpha = 0.7) +
+  annotate("text", x = 2001, y = 72, label = "9/11 & GWOT", 
+           size = 3.5, fontface = "bold", color = "#67000d") +
+  annotate("segment", x = 2001, xend = 2001, y = 70, yend = 65, 
+           arrow = arrow(length = unit(0.2, "cm")), color = "#67000d", linewidth = 0.6) +
+  annotate("text", x = 2014, y = 72, label = "Crimea Annexed", 
+           size = 3.5, fontface = "bold", color = "#67000d") +
+  annotate("segment", x = 2014, xend = 2014, y = 70, yend = 65, 
+           arrow = arrow(length = unit(0.2, "cm")), color = "#67000d", linewidth = 0.6) +
+  annotate("text", x = 2020, y = 70, label = "Nagorno-Karabakh\nDrone War", 
+           size = 3.5, fontface = "bold", color = "#67000d", lineheight = 0.9) +
+  annotate("segment", x = 2020, xend = 2020, y = 65, yend = 60, 
+           arrow = arrow(length = unit(0.2, "cm")), color = "#67000d", linewidth = 0.6) +
+  scale_color_manual(
+    values = c(
+      "Armed UAVs" = "#E69F00",              
+      "5th Gen Fighters" = "#0173b2",        
+      "2nd Gen Combat Helicopters" = "#029e73", 
+      "3rd Gen Main Battle Tanks" = "#cc78bc"   
+    ),
+    name = "Military Technology"
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Armed UAVs" = "#E69F00",              
+      "5th Gen Fighters" = "#0173b2",        
+      "2nd Gen Combat Helicopters" = "#029e73", 
+      "3rd Gen Main Battle Tanks" = "#cc78bc"   
+    ),
+    name = "Military Technology"
+  ) +
+  scale_shape_manual(
+    values = c(
+      "Armed UAVs" = 16,        
+      "5th Gen Fighters" = 17,  
+      "2nd Gen Combat Helicopters" = 15, 
+      "3rd Gen Main Battle Tanks" = 18   
+    ),
+    name = "Military Technology"
+  ) +
+  scale_x_continuous(
+    breaks = seq(1990, 2025, by = 5),
+    limits = c(1990, 2023),
+    expand = expansion(mult = c(0.01, 0.02))
+  ) +
+  scale_y_continuous(
+    breaks = seq(0, 90, by = 10),
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  labs(
+    title = "Armed UAVs: The Fastest Military Technology Diffusion in Modern History",
+    x = "Year of First Adoption",
+    y = "Cumulative Number of States",
+     caption = "Source: COW Arms Technology Dataset v1.0 (2025). Shaded areas show adoption trajectories. Colorblind friendly."
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5, margin = margin(b = 15)),
+    legend.position = "bottom",
+    legend.text = element_text(size = 11),
+    legend.title = element_text(size = 12, face = "bold"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "grey90", linewidth = 0.3),
+    plot.caption = element_text(size = 8, color = "grey50", hjust = 0, margin = margin(t = 10)),
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text = element_text(size = 10),
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA)
+  )
+```
+
+
+
+
