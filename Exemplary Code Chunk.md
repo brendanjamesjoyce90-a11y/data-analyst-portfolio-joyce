@@ -1,19 +1,24 @@
 # Exemplary Code Chunk
-*Creating a Gradient Color Scheme to Show UAV Diffusion Over Time*
+## *Creating a Gradient Color Scheme to Show UAV Diffusion Over Time*
 
 ## What this chunk does
 
-It takes the raw COW Armed UAV adoption and produces a choropleth showing when each country first adopted armed UAVs. The pipeline filters for UAV records, computes each state's first adoption year with `group_by` + `summarise(min(year))`, joins the result onto world map polygons through a manual country-name lookup table. The map thus renders with a sequential blue-to-red color scale from early to recent adopters (see below).
+It takes the raw COW Armed UAV adoption and produces a choropleth showing when each country first adopted armed UAVs. 
+The pipeline itself:
+- filters for UAV records
+- computes each state's first adoption year with `group_by` + `summarise(min(year))`
+- joins the result onto world map polygons through a manual country-name lookup table.
+- renders it with a sequential blue-to-red color scale from early to recent adopters (see below).
 
-## Why I want to highlight this
-
-Reconciling COW state names with the region names in the map data — "United States of America" vs. "USA," "Russia" vs. "Russian Federation," and so on, was difficult. I didn't want to rely on string matching (which silently mismatches), so the `country_mapping` tibble handles every case explicitly, and any unmapped country surfaces as a visible NA on the map instead of a silent error.
-
-Some small details I want to note:
+### *Some small details I want to note:*
 - `scale_fill_gradientn()` uses an 8-stop ColorBrewer RdBu palette, which is generally colorblind-safe.
 - `coord_fixed(1.3)` locks the aspect ratio; `ylim = c(-55, 83)` crops Antarctica without distorting the rest of the projection.
 - `na.value = "grey20"` keeps non-adopters visually distinct from
   unmapped data.
+
+## Why I want to highlight this
+
+Reconciling COW state names with the region names in the map data — "United States of America" vs. "USA," "Russia" vs. "Russian Federation," and so on, was difficult. I didn't want to rely on string matching (which silently mismatches), so the `country_mapping` tibble handles every case explicitly, and any unmapped country surfaces as a visible NA on the map instead of a silent error.
 
  ## Here is the code: 
 
