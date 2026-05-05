@@ -4,6 +4,7 @@
 ## What this chunk does
 
 It takes the raw COW Armed UAV adoption and produces a choropleth showing when each country first adopted armed UAVs. 
+
 The pipeline itself:
 - filters for UAV records
 - computes each state's first adoption year with `group_by` + `summarise(min(year))`
