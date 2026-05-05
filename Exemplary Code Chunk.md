@@ -52,4 +52,4 @@ ggplot(world_uav, aes(x = long, y = lat, group = group)) +
   )… (full ggplot in code)
 
 ```
-![Gradient output](gradient.png)
+![Gradient output](gradient.PNG)
