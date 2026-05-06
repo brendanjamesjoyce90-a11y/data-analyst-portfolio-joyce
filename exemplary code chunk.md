@@ -10,6 +10,13 @@ My function uses error handling to prevent the script from crashing if one page 
 and prases missing data quite effectively. 
 It's designed to work with a list of senator URLs, making it easy to collect data for the entire Senate in a single pipeline.
 _____
+## Why I think this is noteworthy
+This function enables large-scale web scraping while avoiding detection and blocking by websites. 
+Its uses a real Chrome browser running in the background to load pages exactly like a human would, which bypasses restrictions that block download requests.
+It's also designed to protect against errors. In this case, if one senator's page fails to load (or has unexpected formatting) the script logs a warning and continues instead of crashing, ensuring that you don't lose all your data from one bad page.
+This function also uses regex to find specific numbers and labels, like pulling "127" from "Bills Sponsored: 127 bills".
+And lastly, it is designed to be reusable. You can modify this code to scrape most websites and could (theoretically) scale to thousands of pages.
+_____
 ## Here is the underlying code:
 ### First, I launched a headless browser and masked it to avoid bot detection
 ```{r}
@@ -107,11 +114,4 @@ senators_full <- bind_cols(senators, senator_profile_data) |>
 _____
 ### And here was the output
 ![webscrapingsenators output](webscrapingsenators.PNG)
-_____
-## Why I think this is noteworthy
-This function enables large-scale web scraping while avoiding detection and blocking by websites. 
-Its uses a real Chrome browser running in the background to load pages exactly like a human would, which bypasses restrictions that block download requests.
-It's also designed to protect against errors. In this case, if one senator's page fails to load (or has unexpected formatting) the script logs a warning and continues instead of crashing, ensuring that you don't lose all your data from one bad page.
-This function also uses regex to find specific numbers and labels, like pulling "127" from "Bills Sponsored: 127 bills".
-And lastly, it is designed to be reusable. You can modify this code to scrape most websites and could (theoretically) scale to thousands of pages.
 
