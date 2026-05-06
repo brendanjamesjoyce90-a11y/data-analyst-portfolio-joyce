@@ -6,7 +6,7 @@ the number of bills sponsored and their top policy topic.
 
 Developing this was genuinely challenging. Standard web scraping methods didn't yield effective results, and I kept getting blocked.
 Hence, I needed to simulate a real browser.
-My function uses error handling to prevent the script from crashing if one page fails, ensures the browser closes properly, 
+It uses error handling to prevent the script from crashing if one page fails, ensures the browser closes properly, 
 and prases missing data quite effectively. 
 It's designed to work with a list of senator URLs, making it easy to collect data for the entire Senate in a single pipeline.
 _____
