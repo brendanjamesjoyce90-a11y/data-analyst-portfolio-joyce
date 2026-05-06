@@ -1,8 +1,8 @@
 # This repository contains:
 - My Data Analyst Resume
-- My Data Analyst Final Portfolio Quarto Code
-- The Final Product Output of the Code (6 slides total, click *"more pages"* to see final slide in **Final Product** PDF)
-- An Exemplary Code Chunk (as a markdown file)
+- My Quarto Code that produced the Final Product
+- The Final Product itself (6 slides total, click *"more pages"* to see final slide in **Final Product** PDF)
+- An Exemplary Code Chunk (webscraping)
 - Both Data sets from Janes and Correlates of War (as zip files) 
 
 # My Research Topics
